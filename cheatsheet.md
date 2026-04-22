@@ -1,5 +1,34 @@
 This file will contain documentation for all commands available in your game.
 
+Sapphic Matcha Bar: Architecture Diagram
+Breakdown of Components
+1. Core Classes & Attributes
+Game
+Attributes: currentRoom, inventory: ArrayList<Item>, waitingLine: ArrayList<Customer>, cafeFunds, energy 
+Operations: play(), processCommand(), serveCustomer(), move() 
+
+Room
+Attributes: description, exits: HashMap, items: ArrayList<Item>, currentCustomer: Customer
+Operations: setExit(), addItem(), getLongDescription()
+
+Item
+Attributes: name, description
+
+2. Relationships
+Inheritance: MaleCustomer and LesbianCustomer form a generalization relationship with the Customer superclass. These classes represent a "is-a" relationship (e.g., a LesbianCustomer is-a Customer).
+
+Aggregation (Has-a): The Game class has an aggregation relationship with Item (via the inventory) and Customer (via the waitingLine).
+
+Composition (Is-made-of): Your Game is composed of several Room objects created during initialization (cafe, alley, storage).
+
+Dependency: The Game class depends on the Scanner and Random utility classes to function.
+
+3. Implementation Status Annotations
+Complete: Core game loop, room navigation, item collection (take), and the dynamic customer line generation.
+
+In Progress: Balancing the serving sizes and cafeFunds constants to ensure the game is winnable but entertaining.
+
+
 The Sapphic Matcha Bar: Cheat Sheet
 Available Commands
 go [north/south]: Move between the Alley, the Main Bar, and the Storage Closet.
