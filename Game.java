@@ -9,20 +9,24 @@ public class Game {
     private ArrayList<Customer> waitingLine; 
     private double cafeFunds;
     private boolean playing;
+    private GameWindow window; 
 
-    // --- Win/Loss Constants ---
     private final double WIN_GOAL = 100.00;
     private final int MAX_CUSTOMERS = 15;
     private int customersServedCount = 0;
-    private int matchaServings = 0; // New serving size tracker
+    private int matchaServings = 0; 
 
     public Game() {
         this.inventory = new ArrayList<>();
         this.waitingLine = new ArrayList<>();
+        this.window = new GameWindow(); 
         this.cafeFunds = 0;
         this.playing = true;
         createRooms();
         generateUniqueLine(); 
+        
+        // Default starting image
+        window.updateDisplay("bar_view.gif"); 
     }
 
     private void createRooms() {
@@ -30,13 +34,13 @@ public class Game {
         Room alley = new Room("a dark alleyway behind the shop");
         Room storage = new Room("the locked storage closet");
 
-        // Exits
+        // Map setup
         cafe.setExit("north", storage);
         storage.setExit("south", cafe); 
         cafe.setExit("south", alley);
         alley.setExit("north", cafe);
 
-        // Items
+        // Item placement
         alley.addItem(new Item("key", "A bronze key."));
         storage.addItem(new Item("matcha", "Ceremonial powder (5 servings)."));
 
@@ -65,14 +69,27 @@ public class Game {
 
     public void play() {
         Scanner reader = new Scanner(System.in);
+        // ORIGINAL STARTING PAGE
         System.out.println("==========================================");
         System.out.println("     WELCOME TO THE SAPPHIC MATCHA BAR     ");
         System.out.println("==========================================");
-        System.out.println("Goal: Earn $" + WIN_GOAL + " by serving customers.");
-        System.out.println("Type 'help' to see what you can do!");
+        System.out.println("Type 'help' to see all of the commands you can use.");
+        System.out.println("Goal: Earn $" + WIN_GOAL + " by serving women!");
         System.out.println("==========================================");
 
         while (playing) {
+            // Customer Display
+            if (currentRoom.getDescription().contains("Main Matcha Bar") && currentRoom.getCustomer() != null) {
+                System.out.println("\nStanding at the bar: " + currentRoom.getCustomer().getName());
+            }
+
+            // ITEM ALERT: Tells the player if an item is where they are
+            if (!currentRoom.getItems().isEmpty()) {
+                for (Item i : currentRoom.getItems()) {
+                    System.out.println("✨ You see a " + i.getName() + " here! Type 'take " + i.getName() + "' to pick it up.");
+                }
+            }
+
             System.out.print("\n[Matcha Servings: " + matchaServings + " | Funds: $" + cafeFunds + "]\n> ");
             String input = reader.nextLine().toLowerCase();
             processCommand(input);
@@ -84,12 +101,10 @@ public class Game {
     private void checkWinLossConditions() {
         if (cafeFunds >= WIN_GOAL) {
             System.out.println("\n VICTORY! ");
-            System.out.println("You made $" + cafeFunds + ". The bar is a legend!");
+            window.updateDisplay("victory.gif");
             playing = false;
-        } 
-        else if (customersServedCount >= MAX_CUSTOMERS && cafeFunds < WIN_GOAL) {
+        } else if (customersServedCount >= MAX_CUSTOMERS && cafeFunds < WIN_GOAL) {
             System.out.println("\n SHIFT OVER: NOT ENOUGH PROFIT ");
-            System.out.println("You served everyone but didn't meet the goal.");
             playing = false;
         }
     }
@@ -102,7 +117,7 @@ public class Game {
         if (command.equals("map")) drawMap();
         else if (command.equals("help")) printHelp();
         else if (command.equals("go")) {
-            if (words.length < 2) System.out.println("Go where? (north, south, east, west)");
+            if (words.length < 2) System.out.println("Go where?");
             else move(words[1]);
         } 
         else if (command.equals("take")) {
@@ -113,7 +128,6 @@ public class Game {
         else if (command.equals("inventory") || command.equals("i")) showInventory();
         else if (command.equals("look")) System.out.println(currentRoom.getLongDescription());
         else if (command.equals("quit")) playing = false;
-        else System.out.println("Unknown command. Type 'help' for a list of commands.");
     }
 
     private void move(String direction) {
@@ -123,17 +137,77 @@ public class Game {
             return;
         }
         
+        // LOCKED STORAGE HINT
         if (nextRoom.getDescription().contains("storage") && !hasItem("key")) {
-            System.out.println("Locked! Find the key in the Alley (south).");
+            System.out.println("Locked! You need a key. Maybe check the alley to the south?");
         } else {
             currentRoom = nextRoom;
-            System.out.println("Moved " + direction + ". " + currentRoom.getLongDescription());
+            System.out.println("Moved " + direction);
+            System.out.println("You are now in " + currentRoom.getDescription() + ".");
             
-            // Logic to restock the storage room so you can always go back for more
-            if (currentRoom.getDescription().contains("storage") && currentRoom.getItems().isEmpty()) {
-                currentRoom.addItem(new Item("matcha", "A fresh tin of ceremonial powder (5 servings)."));
-                System.out.println("There is a fresh tin of matcha on the shelf.");
+            // ALERT FOR ITEMS ON MOVE
+            if (!currentRoom.getItems().isEmpty()) {
+                for (Item i : currentRoom.getItems()) {
+                    System.out.println("✨ Alert: There is a " + i.getName() + " here!");
+                }
             }
+
+            // Graphic Updates
+            if (currentRoom.getDescription().contains("alley")) window.updateDisplay("alley.gif");
+            else if (currentRoom.getDescription().contains("storage")) window.updateDisplay("storage.gif");
+            else window.updateDisplay("bar_view.gif");
+        }
+    }
+
+    private void serveCustomer() {
+        Customer c = currentRoom.getCustomer();
+        if (c == null) {
+            System.out.println("No one here.");
+            return;
+        }
+
+        if (matchaServings <= 0) {
+            System.out.println("Out of matcha! You need to go north to the storage room.");
+            return;
+        }
+        
+        matchaServings--;
+
+        // PUSHEEN TRIGGER & SERVING WOMEN PRIORITY
+        if (c instanceof LesbianCustomer) {
+            window.updateDisplay("pusheen-thumbs-up.gif"); 
+            System.out.println("👍 Serving a woman! Pusheen approves.");
+        } else {
+            window.updateDisplay("bar_view.gif");
+        }
+
+        double price = c.calculateBill();
+        cafeFunds += price;
+        customersServedCount++;
+        
+        System.out.println("\n--- SERVING " + c.getName() + " ---");
+        System.out.println("Total: $" + price);
+
+        // PRICE REACTIONS
+        if (c instanceof LesbianCustomer) {
+            if (price > 15.0) {
+                System.out.println(c.getName() + ": \"A bit pricey, but for this bar? Totally worth it!\" ✨");
+            } else {
+                System.out.println(c.getName() + ": \"Oh, what a steal! I'll be back tomorrow.\" ❤️");
+            }
+        } else {
+            if (price > 10.0) {
+                System.out.println(c.getName() + ": \"Man, this is expensive... better be good powder.\" 🤨");
+            } else {
+                System.out.println(c.getName() + ": \"Thanks. Here's your money.\"");
+            }
+        }
+        
+        if (!waitingLine.isEmpty()) {
+            currentRoom.setCustomer(waitingLine.remove(0));
+            System.out.println("\n*** Next up: " + currentRoom.getCustomer().getName() + " ***");
+        } else {
+            currentRoom.setCustomer(null);
         }
     }
 
@@ -147,64 +221,24 @@ public class Game {
         }
         if (toTake != null) {
             if (toTake.getName().equalsIgnoreCase("matcha")) {
-                matchaServings += 5; // Add servings instead of just an item
+                matchaServings += 5;
                 currentRoom.getItems().remove(toTake);
-                System.out.println("You restocked! You now have " + matchaServings + " servings of matcha.");
+                System.out.println("Matcha restocked! (5 servings obtained)");
             } else {
                 inventory.add(toTake);
                 currentRoom.getItems().remove(toTake);
-                System.out.println("You took the " + toTake.getName());
+                System.out.println("Took " + toTake.getName());
             }
-        } else System.out.println("That item isn't here.");
-    }
-
-    private void serveCustomer() {
-        Customer c = currentRoom.getCustomer();
-        if (c == null) {
-            System.out.println("No one here to serve.");
-            return;
-        }
-
-        if (matchaServings <= 0) {
-            System.out.println("Out of matcha! Go back to the storage closet (north) to get more.");
-            return;
-        }
-        
-        matchaServings--; // Use one serving
-
-        String identityLabel = "";
-        if (c instanceof MaleCustomer) {
-            identityLabel = "[MALE]";
-        } else if (c instanceof LesbianCustomer) {
-            identityLabel = "[WOMAN]";
-        }
-
-        double price = c.calculateBill();
-        cafeFunds += price;
-        customersServedCount++;
-        
-        System.out.println("\n--- SERVING " + identityLabel + " " + c.getName() + " ---");
-        System.out.println("Total: $" + price);
-        System.out.println("Reaction: " + c.getReaction());
-        System.out.println("Servings remaining: " + matchaServings);
-        
-        if (!waitingLine.isEmpty()) {
-            currentRoom.setCustomer(waitingLine.remove(0));
-            System.out.println("\n*** Next up: " + currentRoom.getCustomer().getName() + " ***");
         } else {
-            currentRoom.setCustomer(null);
-            System.out.println("\nNo more customers in line!");
+            System.out.println("That item isn't here.");
         }
     }
 
     private void showInventory() {
-        System.out.println("Matcha Servings: " + matchaServings);
-        if (inventory.isEmpty()) System.out.println("Your pockets are empty (except for your key if you have it).");
-        else {
-            System.out.print("Items: ");
-            for (Item i : inventory) System.out.print("[" + i.getName() + "] ");
-            System.out.println();
-        }
+        System.out.println("Matcha servings: " + matchaServings);
+        System.out.print("Inventory: ");
+        for (Item i : inventory) System.out.print("[" + i.getName() + "] ");
+        System.out.println();
     }
 
     private boolean hasItem(String name) {
@@ -215,25 +249,15 @@ public class Game {
     }
 
     private void drawMap() {
-        System.out.println("\n--- CAFE MAP ---");
-        System.out.println(" [ STORAGE ]  (North - Needs Key)");
-        System.out.println("      |         ");
-        System.out.println(" [ MAIN BAR ] (Center)");
-        System.out.println("      |         ");
-        System.out.println(" [  ALLEY   ] (South - Find Key Here)");
-        System.out.println("----------------");
-        System.out.println("You are currently at: " + currentRoom.getDescription());
+        System.out.println("\n      [ STORAGE ] (North - Matcha)");
+        System.out.println("          |");
+        System.out.println("      [  BAR    ] (Center - Customers)");
+        System.out.println("          |");
+        System.out.println("      [  ALLEY  ] (South - Key)");
     }
 
     private void printHelp() {
-        System.out.println("\n--- HOW TO PLAY ---");
-        System.out.println("go [north/south] - Move between rooms");
-        System.out.println("take [item]      - Pick up items (like the key or matcha)");
-        System.out.println("serve            - Serve the customer at the counter");
-        System.out.println("look             - Check your surroundings");
-        System.out.println("inventory        - Check your items and matcha count");
-        System.out.println("map              - See the layout of the cafe");
-        System.out.println("quit             - Exit the game");
+        System.out.println("Commands: go [north/south], take [item], serve, look, inventory, map, quit");
     }
 
     public static void main(String[] args) {
